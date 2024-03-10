@@ -1,8 +1,10 @@
 package com.example.urlShortener.controller;
 
 import com.example.urlShortener.model.Link;
+import com.example.urlShortener.model.Stats;
 import com.example.urlShortener.model.User;
 import com.example.urlShortener.repoInterface.LinkRepository;
+import com.example.urlShortener.repoInterface.StatsRepository;
 import com.example.urlShortener.repoInterface.UserRepository;
 import com.google.common.hash.Hashing;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,11 +22,13 @@ import java.util.Optional;
 public class Controller {
     private final UserRepository userRepository;
     private final LinkRepository linkRepository;
+    private final StatsRepository statsRepository;
 
     @Autowired
-    Controller(UserRepository userRepository, LinkRepository linkRepository) {
+    Controller(UserRepository userRepository, LinkRepository linkRepository, StatsRepository statsRepository) {
         this.userRepository = userRepository;
         this.linkRepository = linkRepository;
+        this.statsRepository = statsRepository;
     }
 
     @PostMapping("/createUser")
@@ -65,6 +69,13 @@ public class Controller {
                 link1.setSmallUrl(smallUrl);
                 link1.setOriginalUrl(originalUrl);
                 linkRepository.save(link1);
+                Stats stats = new Stats();
+                stats.setSmallUrl(smallUrl);
+                stats.setOriginalUrl(originalUrl);
+                stats.setUserId(userInDb.getId());
+                stats.setCount(1);
+                statsRepository.save(stats);
+
                 return smallUrl;
             }
             else
@@ -74,7 +85,27 @@ public class Controller {
             return "No such user";
     }
 
-
+    @GetMapping("/stats")
+    public Stats getStats(@RequestHeader (value = "userName") String userName,
+                          @RequestHeader (value = "password") String password,
+                          @RequestParam String smallUrl) {
+        User userInDb = userRepository.findByUserName(userName);
+        if(userInDb != null) {
+            String hashedPassword = Hashing.sha256().hashString(password, StandardCharsets.UTF_8).toString();
+            if(hashedPassword.equals(userInDb.getPassword())) {
+                Stats clickStats = statsRepository.findBySmallUrl(smallUrl);
+                return clickStats;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        else
+        {
+            return null;
+        }
+    }
 
 
 
