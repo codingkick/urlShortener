@@ -1,6 +1,8 @@
 package com.example.urlShortener.controller;
 
+import com.example.urlShortener.model.Link;
 import com.example.urlShortener.model.User;
+import com.example.urlShortener.repoInterface.LinkRepository;
 import com.example.urlShortener.repoInterface.UserRepository;
 import com.google.common.hash.Hashing;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +18,14 @@ import java.util.Optional;
 
 @RestController
 public class Controller {
+    private final UserRepository userRepository;
+    private final LinkRepository linkRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    Controller(UserRepository userRepository, LinkRepository linkRepository) {
+        this.userRepository = userRepository;
+        this.linkRepository = linkRepository;
+    }
 
     @PostMapping("/createUser")
     public String createUser(@RequestBody User user) {
@@ -54,6 +61,10 @@ public class Controller {
                 String base64EncodedUrl = Base64.getUrlEncoder().withoutPadding().encodeToString(urlSha256.getBytes());
                 String smallUrl;
                 smallUrl = base64EncodedUrl.substring(0,7);
+                Link link1 = new Link();
+                link1.setSmallUrl(smallUrl);
+                link1.setOriginalUrl(originalUrl);
+                linkRepository.save(link1);
                 return smallUrl;
             }
             else
