@@ -85,6 +85,19 @@ public class Controller {
             return "No such user";
     }
 
+    @GetMapping("/original/{smallUrl}")
+    public String getOriginalUrl(@PathVariable String smallUrl) {
+        Link link = linkRepository.findBySmallUrl(smallUrl);
+        if(link != null) {
+            Stats stat = statsRepository.findBySmallUrl(smallUrl);
+            stat.setCount(stat.getCount() + 1);
+            statsRepository.save(stat);
+            return link.getOriginalUrl();
+        }
+        else {
+            return "No such url in db";
+        }
+    }
     @GetMapping("/stats")
     public Stats getStats(@RequestHeader (value = "userName") String userName,
                           @RequestHeader (value = "password") String password,
