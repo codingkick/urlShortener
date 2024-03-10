@@ -2,10 +2,16 @@ package com.example.urlShortener.controller;
 
 import com.example.urlShortener.model.User;
 import com.example.urlShortener.repoInterface.UserRepository;
+import com.google.common.hash.Hashing;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.web.bind.annotation.*;
 
 import javax.swing.text.html.Option;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.Optional;
 
 @RestController
@@ -13,6 +19,65 @@ public class Controller {
 
     @Autowired
     private UserRepository userRepository;
+
+    @PostMapping("/createUser")
+    public String createUser(@RequestBody User user) {
+        String userName = user.getUserName();
+
+        User u1 = userRepository.findByUserName(userName);
+        if(u1 == null) {
+            String originalPassword = user.getPassword();
+            String hashedPassword = Hashing.sha256().hashString(originalPassword, StandardCharsets.UTF_8).toString();
+            user.setPassword(hashedPassword);
+            userRepository.save(user);
+            return "User is created";
+        }
+        else {
+            return "userName already in use";
+        }
+    }
+
+    @GetMapping("/shortenUrl")
+    public String shortenUrl(@RequestParam String originalUrl,
+                             @RequestHeader (value = "userName") String userName,
+                             @RequestHeader (value = "password") String password) {
+        User userInDb = userRepository.findByUserName(userName);
+        if(userInDb != null) {
+            String hashedPassword = Hashing.sha256().hashString(password, StandardCharsets.UTF_8).toString();
+            if(hashedPassword.equals(userInDb.getPassword()))
+            {
+                LocalDateTime currentTime = LocalDateTime.now();
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                String currentTimeAsString = currentTime.format(formatter);
+                String urlSha256 = Hashing.sha256().hashString(originalUrl + userName + currentTimeAsString, StandardCharsets.UTF_8).toString();
+                // Use Base64 encoding to create a shorter representation
+                String base64EncodedUrl = Base64.getUrlEncoder().withoutPadding().encodeToString(urlSha256.getBytes());
+                String smallUrl;
+                smallUrl = base64EncodedUrl.substring(0,7);
+                return smallUrl;
+            }
+            else
+                return "Wrong password";
+        }
+        else
+            return "No such user";
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     @GetMapping("/user/{id}")
     public User getUserInfo(@PathVariable String id) {
         return userRepository.findById(id).orElse(null);
@@ -31,18 +96,10 @@ public class Controller {
             return user1;
     }
 
-    @PostMapping("/user")
-    public String createUser(@RequestBody User user) {
-        User findUser = userRepository.findByUserName(user.getUserName());
-        System.out.println(findUser);
-        if(findUser!=null)
-        {
-            return "User is already there";
-        }
-        else {
-            User createdUser = userRepository.save(user);
-            return "user created with id : "+ createdUser.getId();
-        }
+    @GetMapping("/header")
+    public String printHeader(@RequestHeader(value = "Authorization") String authHeader) {
+        System.out.println("header call");
+        return authHeader;
     }
 
     @GetMapping("/hello/{name}")
